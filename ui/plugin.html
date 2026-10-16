@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScaleSight</title>
+<style>
+:root{
+ --bg:#0E131C;--panel:#161D29;--panel2:#1D2635;--line:#2A3547;--ink:#E3E9F2;--muted:#8796AD;--faint:#5B6A80;
+ --kb:#3E8BF0;--ky:#E9BC2C;--kr:#E2575A;--kg:#34C873;--pv:#A88BFF;--acc:#F2B33D;
+ --white:#E9EDF3;--black:#0B0F16;--keyline:#3A4659;
+ --ui:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+ --num:'Bahnschrift','DIN Alternate','Segoe UI',system-ui,sans-serif;
+ color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:13px/1.45 var(--ui);overflow:hidden;user-select:none;-webkit-user-select:none}
+.app{height:100vh;display:grid;grid-template-rows:42px minmax(128px,150px) minmax(120px,1fr) 30px minmax(170px,1.15fr);gap:8px;padding:8px 10px 10px;min-width:780px}
+button,select{font:500 12px var(--ui);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:4px 9px;cursor:pointer;height:28px;white-space:nowrap}
+button:hover,select:hover{border-color:var(--muted)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--pv);outline-offset:1px}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+/* header */
+.hdr{display:flex;align-items:center;gap:6px;min-width:0}
+#lock,#keyPick{max-width:120px}
+.logo{font:700 17px var(--num);letter-spacing:.06em;text-transform:uppercase;margin-right:6px;white-space:nowrap}
+.logo i{font-style:normal;color:var(--acc)}
+.seg{display:inline-flex}.seg button{border-radius:0}.seg button+button{border-left:0}
+.seg button:first-child{border-radius:5px 0 0 5px}.seg button:last-child{border-radius:0 5px 5px 0}
+.sp{flex:1}
+.pill{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap}
+.pill.on{color:var(--kg);border-color:color-mix(in srgb,var(--kg) 50%,var(--line))}
+.preview-only[hidden]{display:none}
+/* info row */
+.info{display:grid;grid-template-columns:1.35fr .85fr 1fr 150px;gap:8px;min-height:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0;min-height:0;overflow:hidden}
+.lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:600}
+.big{font:700 clamp(30px,4.6vw,52px)/1 var(--num);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mid{font:700 clamp(22px,2.8vw,32px)/1.05 var(--num);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live.on{color:var(--kg)}
+.roman{font:600 14px var(--num);color:var(--kb);margin-top:6px}
+.sub{color:var(--muted);font-size:12px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.conf{display:inline-block;font-size:11px;padding:1px 8px;border-radius:20px;border:1px solid var(--line);color:var(--muted);margin:7px 0 8px}
+.circle{padding:4px;width:150px;display:flex;align-items:center;justify-content:center}
+.circle svg{width:100%;height:100%;display:block}
+svg text{font-family:var(--num);pointer-events:none}
+.segc{cursor:pointer;stroke:var(--panel);stroke-width:2.5;fill:var(--panel2)}
+.segc:hover{fill:var(--line)}
+.segc.near{fill:color-mix(in srgb,var(--kb) 32%,var(--panel2))}
+.segc.cur{fill:var(--acc)}
+.segc.pv{fill:color-mix(in srgb,var(--pv) 55%,var(--panel2))}
+/* keyboard */
+.kbWrap{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 8px 18px;min-height:0;position:relative}
+.kb{position:relative;height:100%}
+.key{position:absolute;top:0;border-radius:0 0 4px 4px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding-bottom:4px;touch-action:none}
+.key.w{height:100%;background:var(--white);border:1px solid var(--keyline);z-index:1}
+.key.b{height:60%;background:var(--black);z-index:2;border:1px solid #000}
+.key .dot{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 8.5px var(--ui);color:#fff;visibility:hidden}
+.kb.compact .key .dot{width:24px;height:24px;font-size:11px}
+.key .nm{font:700 9.5px var(--ui);height:12px;margin-top:2px;color:#0F1722}
+.kb.compact .key .nm{font-size:12px;height:15px}
+.key .bar{position:absolute;top:0;left:2px;right:2px;height:5px;border-radius:0 0 3px 3px;background:var(--pv);visibility:hidden}
+.key.pv .bar{visibility:visible}
+.key.kb-b{background:var(--kb);border-color:rgba(10,14,20,.6)}.key.b.kb-b{background:color-mix(in srgb,var(--kb) 70%,#000)}
+.key.kb-y{background:var(--ky);border-color:rgba(10,14,20,.6)}.key.b.kb-y{background:color-mix(in srgb,var(--ky) 72%,#000)}
+.key.kb-r{background:var(--kr);border-color:rgba(10,14,20,.6)}.key.b.kb-r{background:color-mix(in srgb,var(--kr) 70%,#000)}
+.key.w.midi{background:var(--kg)}.key.b.midi{background:color-mix(in srgb,var(--kg) 75%,#000)}
+.key.b.kb-b,.key.b.kb-y,.key.b.kb-r,.key.b.midi{border-color:rgba(255,255,255,.55)}
+.key.kb-b .dot,.key.kb-y .dot,.key.kb-r .dot{visibility:visible;background:rgba(0,0,0,.28)}
+.key.kb-y .dot{color:#2a2000;background:rgba(255,255,255,.55)}
+.key.held .dot,.key.ghost .dot,.key.midi .dot{visibility:visible;background:#0F1722;color:#fff;box-shadow:0 0 0 2px #fff;width:19px;height:19px}
+.kb.compact .key.held .dot,.kb.compact .key.ghost .dot,.kb.compact .key.midi .dot{width:27px;height:27px}
+.key.ghost .dot{opacity:.6}
+.key.b .nm,.key.kb-b .nm,.key.kb-r .nm{color:#fff}.key.kb-y .nm{color:#2a2000}.key.w.midi .nm{color:#0F1722}
+.key .oct{position:absolute;bottom:-16px;font-size:9.5px;color:var(--faint)}
+/* strip */
+.strip{display:flex;align-items:center;gap:10px;min-width:0}
+.prog{display:flex;gap:4px;overflow:hidden;flex:1;min-width:0;align-items:center}
+.prog span{font:600 12px var(--num);padding:2px 8px;border-radius:4px;background:var(--panel2);border:1px solid var(--line);white-space:nowrap}
+.prog span.last{border-color:var(--acc)}
+.prog .empty{background:none;border:0;color:var(--faint);font:400 12px var(--ui);padding:0}
+.legend{display:flex;gap:11px;font-size:11px;color:var(--muted);white-space:nowrap}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.sw.b{background:var(--kb)}.sw.y{background:var(--ky)}.sw.r{background:var(--kr)}.sw.g{background:var(--kg)}.sw.p{background:var(--pv)}
+/* bottom panels */
+.panels{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:8px;min-height:0}
+.pnl{background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;min-height:0}
+.pnl h2{font:600 12.5px var(--num);letter-spacing:.06em;text-transform:uppercase;margin:0;padding:9px 12px 7px;color:var(--muted);border-bottom:1px solid var(--line)}
+.pnl .body{overflow-y:auto;padding:9px 12px;flex:1;min-height:0;user-select:text;-webkit-user-select:text}
+.body::-webkit-scrollbar{width:8px}.body::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+.empty{color:var(--faint)}
+.scaleBtn{display:block;width:100%;height:auto;text-align:left;padding:7px 10px;margin-bottom:6px;border-radius:6px}
+.scaleBtn[aria-pressed="true"]{background:var(--panel2);color:var(--ink);border-color:var(--kb);box-shadow:inset 3px 0 0 var(--kb)}
+.scaleBtn b{font:600 13px var(--num)}
+.scaleBtn .tag{font-size:10.5px;color:var(--muted);float:right}
+.scaleBtn .notes{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}
+.why p{margin:0 0 8px}
+.why .add{border-left:3px solid var(--kb);padding-left:9px}
+.why .add.y{border-left-color:var(--ky)}
+.row{margin:0 0 9px}
+.shift{display:block;width:100%;height:auto;text-align:left;margin-bottom:5px;background:transparent;padding:6px 9px}
+.shift[aria-pressed="true"]{background:color-mix(in srgb,var(--pv) 18%,var(--panel));color:var(--ink);border-color:var(--pv)}
+.shift b{font:600 12.5px var(--num)}
+.shift span{display:block;font-size:11.5px;color:var(--muted)}
+#modeHint{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+ <header class="hdr">
+  <div class="logo">Scale<i>Sight</i></div>
+  <span class="seg" role="group" aria-label="Mode">
+   <button data-mode="scale" aria-pressed="true" title="Detects the key and suggests scales">Scale</button><button data-mode="key" aria-pressed="false" title="You choose the key; everything is measured against it">Key</button><button data-mode="flow" aria-pressed="false" title="Ignores the key and reacts only to your last chord">Flow</button>
+  </span>
+  <select id="lock" aria-label="Lock key"></select><select id="keyPick" aria-label="Your key" hidden></select>
+  <span class="sp"></span>
+  <button id="octBtn" aria-pressed="false" title="Show one octave; notes from any octave land on it">1 octave</button>
+  <button id="latchBtn" aria-pressed="true" title="Clicked keys stay held until clicked again">Hold</button>
+  <button id="clearBtn">Clear</button>
+  <button id="stepDemo" title="Step through the Señorita progression">Demo</button>
+  <button id="soundBtn" class="preview-only" aria-pressed="true">Sound</button>
+  <button id="midiBtn" class="preview-only">MIDI</button>
+  <span class="pill" id="hostStatus">Preview</span>
+ </header>
+
+ <section class="info">
+  <div class="card">
+   <div class="lbl">Last chord</div>
+   <div class="big" id="chordName">–</div>
+   <div class="roman" id="roman"></div>
+   <div class="sub" id="alts">Play a chord to begin.</div>
+  </div>
+  <div class="card">
+   <div class="lbl">Playing now</div>
+   <div class="mid live" id="live">–</div>
+   <span class="conf" id="liveSub">Nothing held</span>
+  </div>
+  <div class="card">
+   <div class="lbl" id="keyLabel">Detected key</div>
+   <div class="mid" id="keyName">–</div>
+   <span class="conf" id="conf">Waiting for notes</span>
+  </div>
+  <div class="card circle"><svg id="circle" viewBox="-150 -150 300 300" role="img" aria-label="Circle of fifths"></svg></div>
+ </section>
+
+ <section class="kbWrap"><div class="kb" id="kb"></div></section>
+
+ <section class="strip">
+  <div class="prog" id="prog"><span class="empty">Chord history appears here.</span></div>
+  <div class="legend">
+   <span><i class="sw b"></i><span id="legendB">In the scale</span></span>
+   <span><i class="sw y"></i>Could play</span>
+   <span><i class="sw r"></i>Clashes</span>
+   <span><i class="sw g"></i>Incoming MIDI</span>
+   <span><i class="sw p"></i>Preview</span>
+  </div>
+ </section>
+
+ <section class="panels">
+  <div class="pnl"><h2 id="leftTitle">Scales that fit</h2><div class="body" id="scales"><span class="empty">Scale options appear once you play two or more notes.</span></div></div>
+  <div class="pnl why"><h2>Why it works</h2><div class="body" id="why"><span class="empty">Explanations of the chord, the key and the move from the last chord.</span></div></div>
+  <div class="pnl"><h2 id="rightTitle">Where you could shift</h2><div class="body" id="shifts"><span class="empty">Play something so a key can be detected.</span></div></div>
+ </section>
+ <div id="modeHint"></div>
+</div>
+<script>
+/*ENGINE*/
+</script>
+<script>
+/*APP*/
+</script>
+</body>
+</html>
