@@ -1,0 +1,31 @@
+name: Build ScaleSight
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the WebView2 package (used for the plugin window)
+        shell: pwsh
+        run: |
+          Register-PackageSource -ProviderName NuGet -Name nugetRepository -Location https://www.nuget.org/api/v2 -Force
+          Install-Package Microsoft.Web.WebView2 -Scope CurrentUser -RequiredVersion 1.0.1901.177 -Source nugetRepository -Force
+
+      - name: Set up the build
+        run: cmake -B build
+
+      - name: Build the VST3 and the standalone app
+        run: cmake --build build --config Release --target ScaleSight_VST3 ScaleSight_Standalone
+
+      - name: Upload the finished plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScaleSight-Windows
+          path: |
+            build/ScaleSight_artefacts/Release/VST3
+            build/ScaleSight_artefacts/Release/Standalone/*.exe
